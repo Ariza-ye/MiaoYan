@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A31100000000000000000001 /* S3Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31100000000000000000011 /* S3Client.swift */; };
+		A31100000000000000000002 /* S3SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31100000000000000000012 /* S3SyncEngine.swift */; };
+		A31100000000000000000003 /* S3SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31100000000000000000013 /* S3SyncManager.swift */; };
+		A31100000000000000000004 /* MiaoYanTests/S3SyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31100000000000000000014 /* MiaoYanTests/S3SyncTests.swift */; };
 		D0C1A9E5F00000000000B001 /* Markdown.icns in Resources */ = {isa = PBXBuildFile; fileRef = D0C1A9E5F00000000000B002 /* Markdown.icns */; };
 		A9F1C0DE5E0000000000A001 /* appfiles.json in Resources */ = {isa = PBXBuildFile; fileRef = A9F1C0DE5E0000000000A002 /* appfiles.json */; };
 		FA075E976CACD6C8641C8A64 /* MiaoYanMark.otf in Resources */ = {isa = PBXBuildFile; fileRef = 0EB90555B60CDCEE883EA6A9 /* MiaoYanMark.otf */; };
@@ -210,6 +214,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A31100000000000000000011 /* S3Client.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = S3Client.swift; sourceTree = "<group>"; };
+		A31100000000000000000012 /* S3SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = S3SyncEngine.swift; sourceTree = "<group>"; };
+		A31100000000000000000013 /* S3SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = S3SyncManager.swift; sourceTree = "<group>"; };
+		A31100000000000000000014 /* MiaoYanTests/S3SyncTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MiaoYanTests/S3SyncTests.swift; sourceTree = SOURCE_ROOT; };
 		D0C1A9E5F00000000000B002 /* Markdown.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Markdown.icns; sourceTree = "<group>"; };
 		A9F1C0DE5E0000000000A002 /* appfiles.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = appfiles.json; sourceTree = "<group>"; };
 		0EB90555B60CDCEE883EA6A9 /* MiaoYanMark.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = MiaoYanMark.otf; sourceTree = "<group>"; };
@@ -488,6 +496,7 @@
 				95948F99423D28CB53271964 /* MiaoYanTests/WikilinkIndexTests.swift */,
 				B975C5A10CFD43A88A5126AC /* MiaoYanTests/ClipboardManagerUTF16Tests.swift */,
 				4B42684E4812440381B81D4A /* MiaoYanTests/NoteSaveDebounceTests.swift */,
+				A31100000000000000000014 /* MiaoYanTests/S3SyncTests.swift */,
 				B738F144215845899083B5C4 /* MiaoYanTests/StorageInitContentDecisionTests.swift */,
 				C7D4BC0BCD2C364D59E53FA6 /* MiaoYanTests/GitHubAlertsTests.swift */,
 				7657AFD4D24AA71B9A256741 /* MiaoYanTests/NoteFrontmatterTests.swift */,
@@ -561,6 +570,9 @@
 				2B5045CD50BB4556AAB3F390 /* WikilinkIndex.swift */,
 				D79FE8A01F77D04A00113CFD /* Note.swift */,
 				AA001000AA001000AA001000 /* NoteVersionManager.swift */,
+				A31100000000000000000011 /* S3Client.swift */,
+				A31100000000000000000012 /* S3SyncEngine.swift */,
+				A31100000000000000000013 /* S3SyncManager.swift */,
 				D75EE7F92078B3C00055F159 /* Sidebar.swift */,
 				D75EE7F62078B22D0055F159 /* SidebarItem.swift */,
 				D7E025071F3B6DDB00EDDA32 /* Storage.swift */,
@@ -866,6 +878,7 @@
 				D66760150F65F7A76FB578AD /* MiaoYanTests/WikilinkIndexTests.swift in Sources */,
 				C75DC26EE3FF48E896528611 /* MiaoYanTests/ClipboardManagerUTF16Tests.swift in Sources */,
 				DED88A40FE6B4D8A8A6C1573 /* MiaoYanTests/NoteSaveDebounceTests.swift in Sources */,
+				A31100000000000000000004 /* MiaoYanTests/S3SyncTests.swift in Sources */,
 				BAE809BB946B47E89F92E155 /* MiaoYanTests/StorageInitContentDecisionTests.swift in Sources */,
 				452D621FD0BD8D78F323777C /* MiaoYanTests/GitHubAlertsTests.swift in Sources */,
 				F51B4048259C36431AF78CA5 /* MiaoYanTests/NoteFrontmatterTests.swift in Sources */,
@@ -986,6 +999,9 @@
 				088B43D4653C47ECBC4A20E9 /* ViewController+Export.swift in Sources */,
 				27B4A5AB2E6924CC00C89EFF /* ViewController+Data.swift in Sources */,
 				AA001001AA001001AA001001 /* NoteVersionManager.swift in Sources */,
+				A31100000000000000000001 /* S3Client.swift in Sources */,
+				A31100000000000000000002 /* S3SyncEngine.swift in Sources */,
+				A31100000000000000000003 /* S3SyncManager.swift in Sources */,
 				AA002001AA002001AA002001 /* VersionHistoryViewController.swift in Sources */,
 				D7CD5F6C1F51185F006AA35D /* NSFont+.swift in Sources */,
 				D7508FC81F337E850047AB76 /* SearchTextField.swift in Sources */,

@@ -150,6 +150,31 @@ Bundled JS used by the preview is vendored under
 - Diagnostics log: `~/Library/Logs/MiaoYan/diagnostics.log` (ring buffer,
   50 lines, JSON per line). See `Helpers/Diagnostics.swift`.
 
+## S3 Sync
+
+`Business/S3SyncManager.swift` owns the Settings row, the Keychain secret,
+the one-minute timer and the status shown in General settings. It builds an
+`S3SyncEngine` per run over the current library root:
+
+- `Business/S3Client.swift` signs path-style requests with AWS Signature V4
+  (CryptoKit) and refuses to sync when the service does not enforce conditional
+  writes, since that is what keeps two devices from overwriting each other.
+  Endpoints must be HTTPS except loopback.
+- `S3SyncEngine` walks the library off the main thread, compares content
+  hashes and ETags against `~/Library/Application Support/<bundle id>/S3Sync/`,
+  and applies one safe operation per path. Concurrent edits keep the local file
+  and save the remote version as an `S3 conflict` copy; deletions travel as
+  markers under `.miaoyan-sync/deletions/`, and the original object stays on S3
+  for recovery because some S3-compatible services ignore conditional deletes.
+- The engine writes through `S3LocalInstaller`: staging file plus
+  `RENAME_SWAP`/`RENAME_EXCL` on the main thread only, refusing while a note has
+  pending edits and when the library changed underneath it. It never writes
+  outside the root, never follows symlinks, and stops rather than guessing
+  when a file is unreadable or the folder cannot be scanned.
+- The Mac app has no other S3 writer. `FileSystemEventManager` picks up its own
+  `.s3FileChanged` notifications to refresh the list and sidebar after a remote
+  change, and ignores `i/` and `files/` attachments.
+
 ## Release & Update Path
 
 - Mac App Store builds come from the private `tw93/MiaoYan-Pro` after it

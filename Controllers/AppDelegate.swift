@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemVa
     var shellWindowController: NSWindowController?
     var prefsWindowController: PrefsWindowController?
     var aboutWindowController: AboutWindowController?
+    let s3Sync = S3SyncManager()
     public var urls: [URL]?
     public var searchQuery: String?
     public var newName: String?
@@ -134,6 +135,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemVa
                 pendingGoto = nil
                 RouteMiaoYanGoto(goto)
             }
+            s3Sync.start()
             return
         }
         let storyboard = NSStoryboard(name: "Main", bundle: nil)
@@ -167,6 +169,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemVa
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             mainWC.revealWindowWhenReady()
         }
+
+        s3Sync.start()
 
     }
 

@@ -19,7 +19,7 @@ protocol FileSystemEventHost: AnyObject {
 }
 
 @MainActor
-class FileSystemEventManager {
+class FileSystemEventManager: NSObject {
     private let storage: Storage
     private weak var delegate: FileSystemEventHost?
     private var watcher: FileWatcher?
@@ -27,6 +27,9 @@ class FileSystemEventManager {
     /// another replaces it.
     private var recheckTokens: [ObjectIdentifier: Int] = [:]
     private var lastRecheckToken = 0
+    /// A first sync can land hundreds of files; one list reload per file made
+    /// the window crawl, so the refresh waits for the burst to end.
+    private var s3Refresh: DispatchWorkItem?
     /// Deferred re-checks that ran, for tests.
     private(set) var deferredRecheckRuns = 0
     private var observedFolders: [String] {
@@ -36,6 +39,49 @@ class FileSystemEventManager {
     init(storage: Storage, delegate: FileSystemEventHost) {
         self.storage = storage
         self.delegate = delegate
+        super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(s3FileChanged(_:)), name: .s3FileChanged, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func s3FileChanged(_ notification: Notification) {
+        guard let url = notification.object as? URL, let root = storage.getDefault(),
+            storage.allowedExtensions.contains(url.pathExtension.lowercased())
+        else { return }
+        let rootPath = S3SyncEngine.resolvedRoot(root.url).path + "/"
+        guard url.path.hasPrefix(rootPath) else { return }
+        let relative = String(url.path.dropFirst(rootPath.count))
+        let components = relative.split(separator: "/").dropLast()
+        guard !components.contains(where: { $0 == "i" || $0 == "files" }) else { return }
+        var project = root
+        for (index, component) in components.enumerated() {
+            if index == 0 && component == "Trash", let trash = storage.getDefaultTrash() {
+                project = trash
+            } else {
+                guard let child = storage.subfolders(of: project).first(where: { $0.url.lastPathComponent == component }) else { return }
+                project = child
+            }
+        }
+        if let note = storage.getBy(url: url) {
+            if FileManager.default.fileExists(atPath: url.path) { reloadNote(note: note) } else { removeNote(note: note) }
+        } else if FileManager.default.fileExists(atPath: url.path), let note = storage.initNote(url: url) {
+            note.loadMetadataFromDisk()
+            storage.add(note)
+        }
+        s3Refresh?.cancel()
+        let refresh = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.delegate?.fsReloadSidebar()
+            let selected = EditTextView.note.flatMap { note in
+                self.storage.getBy(url: note.url) === note && FileManager.default.fileExists(atPath: note.url.path) ? note : nil
+            }
+            self.delegate?.fsReloadList(selecting: selected, completion: nil)
+        }
+        s3Refresh = refresh
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: refresh)
     }
 
     public func start() {

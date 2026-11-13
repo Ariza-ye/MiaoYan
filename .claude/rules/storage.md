@@ -10,6 +10,7 @@ paths:
   - "Business/Project*"
   - "Business/WikilinkIndex*"
   - "Business/CloudSync*"
+  - "Business/S3*"
   - "Packages/MiaoYanCore/**"
 ---
 
@@ -20,6 +21,7 @@ paths:
 - Treat iCloud sync and symlinked directories as file-system-sensitive surfaces; resolve paths deliberately and avoid loops or duplicate indexing.
 - Wikilinks and backlinks depend on `Business/WikilinkIndex.swift`, note loading, search, and sidebar refresh behavior. Keep `[[note]]` parsing, recursive search, and Trash exclusions consistent.
 - iCloud sync lives in macOS storage and `Business/CloudSyncManager.swift`. Verify fallback behavior when iCloud is unavailable.
+- S3 sync (`Business/S3Sync*.swift`) mirrors the whole library to an S3 prefix: it must never treat an unreadable file, a failed listing or a missing folder as a deletion, must not overwrite a file or ETag that changed after scanning, and must keep both sides when a note changed on both. Deletions propagate as markers under `.miaoyan-sync/deletions/` and the S3 object is kept for recovery, because some S3-compatible services ignore conditional deletes.
 - Trash handling spans `Business/Storage.swift`, `Business/Note.swift`, sidebar drag/drop, attachment cleanup, and system Trash fallback.
 - `Note.loadFailed` (`readFailed || hasDamagedText`) marks a note whose file exists but could not be read (an iCloud placeholder offline, a permission error), or whose UTF-8 has invalid bytes, which `NoteText.decode` shows as U+FFFD rather than guessing another encoding; the editor shows `readOnlyNotice` for either. Its buffer does not hold the file's real bytes, so `executeSave` refuses every write until a read succeeds and the editor stays read-only for it. Never clear the flag without a successful read: saving that buffer is how an unreadable note used to be replaced by an empty file.
 - A successfully removed note must retire its `Note` instance before any watcher, editor, lifecycle flush, or upload callback can save it again. Existing-note writes must fail closed if the file disappears, and UI rows may be removed only for filesystem operations that succeeded.

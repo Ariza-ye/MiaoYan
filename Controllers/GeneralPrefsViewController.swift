@@ -13,6 +13,11 @@ final class GeneralPrefsViewController: BasePrefsViewController {
     private var buttonDisplayDropdown: PrefsDropdown!
     private var alwaysOnTopSwitch: PrefsSwitch!
     private var shortcutRecorder: PrefsShortcutRecorder!
+    private var syncRow: PrefsRowView!
+    private var syncButton: PrefsPillButton!
+    private var syncDetailsButton: PrefsPillButton!
+
+    private var s3Sync: S3SyncManager? { (NSApp.delegate as? AppDelegate)?.s3Sync }
 
     /// What the running app was launched with, so the Restart pill shows only
     /// while a change is waiting for a relaunch.
@@ -22,6 +27,7 @@ final class GeneralPrefsViewController: BasePrefsViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         NotificationCenter.default.addObserver(self, selector: #selector(handleAlwaysOnTopChanged), name: .alwaysOnTopChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(updateSyncStatus), name: .s3SyncStatusChanged, object: nil)
     }
 
     deinit {
@@ -62,9 +68,16 @@ final class GeneralPrefsViewController: BasePrefsViewController {
         alwaysOnTopSwitch = PrefsSwitch(target: self, action: #selector(alwaysOnTopChanged(_:)))
         alwaysOnTopSwitch.setAccessibilityLabel(I18n.str("Always On Top"))
         shortcutRecorder = PrefsShortcutRecorder(for: .activateWindow)
+        let configureSyncButton = PrefsPillButton(title: I18n.str("Configure"), target: self, action: #selector(configureSync(_:)))
+        syncButton = PrefsPillButton(title: I18n.str("Sync Now"), target: self, action: #selector(syncNow(_:)))
+        syncDetailsButton = PrefsPillButton(title: I18n.str("Details"), target: self, action: #selector(showSyncDetails(_:)))
+        syncDetailsButton.isHidden = true
+        syncRow = PrefsRowView(
+            title: I18n.str("S3 Sync"), detail: I18n.str("S3 sync is off"),
+            controls: [syncDetailsButton, syncButton, configureSyncButton])
 
         addSections([
-            [storageRow],
+            [storageRow, syncRow],
             [
                 PrefsRowView(title: I18n.str("Appearance"), detail: I18n.str("Follow the system, or stay light or dark"), controls: [appearanceDropdown]),
                 PrefsRowView(title: I18n.str("Language"), detail: I18n.str("Takes effect after MiaoYan restarts"), controls: [languageRestartButton, languageDropdown]),
@@ -87,6 +100,94 @@ final class GeneralPrefsViewController: BasePrefsViewController {
         buttonDisplayDropdown.selectOption { $0 as? String == buttonShow }
         alwaysOnTopSwitch.isOn = UserDefaultsManagement.alwaysOnTop
         showStoragePath(settings.storagePath)
+        updateSyncStatus()
+    }
+
+    @objc private func updateSyncStatus() {
+        guard syncRow != nil else { return }
+        syncRow.detail = I18n.str(s3Sync?.status ?? "S3 sync is off")
+        syncButton.isEnabled = s3Sync?.configuration != nil
+        syncDetailsButton.isHidden = s3Sync?.details == nil
+    }
+
+    @objc private func syncNow(_ sender: NSButton) {
+        s3Sync?.syncNow()
+    }
+
+    @objc private func showSyncDetails(_ sender: NSButton) {
+        guard let details = s3Sync?.details else { return }
+        MiaoYanAlert.show(message: I18n.str("S3 Sync"), informativeText: details, style: .informational, for: view.window)
+    }
+
+    @objc private func configureSync(_ sender: NSButton) {
+        showS3Configuration(s3Sync?.configuration, secret: "")
+    }
+
+    private func showS3Configuration(_ current: S3Configuration?, secret: String) {
+        guard let window = view.window, let manager = s3Sync else { return }
+        var buttons = [I18n.str("Save and Sync"), I18n.str("Cancel")]
+        if manager.configuration != nil { buttons.append(I18n.str("Turn Off")) }
+        let alert = MiaoYanAlert.make(
+            message: I18n.str("Configure S3 Sync"),
+            informativeText: I18n.str("Sync this notes folder with an S3-compatible bucket. Deleted files remain on S3 for recovery."), buttons: buttons)
+
+        let endpoint = NSTextField(string: current?.endpoint ?? "https://s3.amazonaws.com")
+        let region = NSTextField(string: current?.region ?? "us-east-1")
+        let bucket = NSTextField(string: current?.bucket ?? "")
+        let prefix = NSTextField(string: current?.prefix ?? "MiaoYan")
+        let accessKey = NSTextField(string: current?.accessKey ?? "")
+        let secretKey = NSSecureTextField(string: secret)
+        secretKey.placeholderString = manager.configuration == nil ? "" : I18n.str("Leave blank to keep the saved key")
+        let fields: [(String, NSTextField)] = [
+            ("Endpoint", endpoint), ("Region", region), ("Bucket", bucket),
+            ("Prefix", prefix), ("Access Key ID", accessKey), ("Secret Access Key", secretKey),
+        ]
+        let rows = fields.map { name, field -> [NSView] in
+            let label = NSTextField(labelWithString: I18n.str(name))
+            field.setAccessibilityLabel(I18n.str(name))
+            field.widthAnchor.constraint(equalToConstant: 300).isActive = true
+            return [label, field]
+        }
+        let grid = NSGridView(views: rows)
+        grid.rowSpacing = 10
+        grid.columnSpacing = 12
+        grid.xPlacement = .leading
+        grid.yPlacement = .center
+        alert.accessoryView = grid
+        MiaoYanAlert.present(alert, for: window) { [weak self, weak manager] response in
+            Task { @MainActor [weak self, weak manager] in
+                guard let self, let manager else { return }
+                if response == .alertThirdButtonReturn {
+                    do { try manager.disable() } catch { self.showS3Error(error) }
+                    return
+                }
+                guard response == .alertFirstButtonReturn else { return }
+                let values = S3Configuration(
+                    endpoint: endpoint.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                    region: region.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                    bucket: bucket.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                    prefix: prefix.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                    accessKey: accessKey.stringValue.trimmingCharacters(in: .whitespacesAndNewlines))
+                let suppliedSecret = secretKey.stringValue
+                do {
+                    try values.validate()
+                    let savedSecret = suppliedSecret.isEmpty ? try manager.storedSecret() : suppliedSecret
+                    guard let savedSecret, !savedSecret.isEmpty else { throw S3Error.invalidConfiguration }
+                    try await S3Client(configuration: values, secret: savedSecret).verifyConditionalWrites()
+                    try manager.configure(values, secret: savedSecret)
+                } catch {
+                    MiaoYanAlert.show(
+                        message: I18n.str("S3 sync failed"), informativeText: S3SyncManager.message(for: error), style: .warning, for: self.view.window
+                    ) { [weak self] _ in
+                        self?.showS3Configuration(values, secret: suppliedSecret)
+                    }
+                }
+            }
+        }
+    }
+
+    private func showS3Error(_ error: Error) {
+        MiaoYanAlert.show(message: I18n.str("S3 sync failed"), informativeText: S3SyncManager.message(for: error), style: .warning, for: view.window)
     }
 
     /// The folder as people know it, `~/Documents/Notes` rather than the full
