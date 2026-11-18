@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    tags: ["V*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#V}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify version consistency
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          MARKETING=$(grep 'MARKETING_VERSION = ' MiaoYan.xcodeproj/project.pbxproj | sed -E 's/.*= ([^;]+);.*/\1/' | tr -d ' ' | sort -u)
+          PROJECT=$(grep 'CURRENT_PROJECT_VERSION = ' MiaoYan.xcodeproj/project.pbxproj | sed -E 's/.*= ([^;]+);.*/\1/' | tr -d ' ' | sort -u)
+          echo "Tag version: ${VERSION}"
+          echo "MARKETING_VERSION: ${MARKETING}"
+          echo "CURRENT_PROJECT_VERSION: ${PROJECT}"
+          [[ "$MARKETING" == "$VERSION" ]] || { echo "::error::MARKETING_VERSION mismatch"; exit 1; }
+          [[ "$PROJECT" == "$VERSION" ]] || { echo "::error::CURRENT_PROJECT_VERSION mismatch"; exit 1; }
+
+      - name: Resolve SPM dependencies
+        run: |
+          xcodebuild \
+            -project MiaoYan.xcodeproj \
+            -scheme MiaoYan \
+            -resolvePackageDependencies
+
+      - name: Archive
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -project MiaoYan.xcodeproj \
+            -scheme MiaoYan \
+            -configuration Release \
+            -archivePath ./build/MiaoYan.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export and sign
+        run: |
+          set -euo pipefail
+          mkdir -p ./build/Release
+          cp -R ./build/MiaoYan.xcarchive/Products/Applications/MiaoYan.app ./build/Release/MiaoYan.app
+          xattr -cr ./build/Release/MiaoYan.app
+          if [ -d "./build/Release/MiaoYan.app/Contents/Frameworks" ]; then
+            find ./build/Release/MiaoYan.app/Contents/Frameworks -depth -name "*.framework" -print0 | xargs -0 codesign --force --deep -s -
+          fi
+          codesign --force --deep -s - ./build/Release/MiaoYan.app
+          codesign -v ./build/Release/MiaoYan.app
+
+      - name: Create DMG
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          APP_NAME="MiaoYan"
+          DMG_NAME="MiaoYan.dmg"
+          STAGING="./build/dmg_staging"
+
+          mkdir -p "$STAGING"
+          cp -R ./build/Release/MiaoYan.app "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+
+          if [ -f ./Resources/dmg-background.png ]; then
+            mkdir -p "$STAGING/.background"
+            cp ./Resources/dmg-background.png "$STAGING/.background/dmg-background.png"
+          fi
+
+          hdiutil create \
+            -volname "$APP_NAME" \
+            -srcfolder "$STAGING" \
+            -ov -format UDZO \
+            -imagekey zlib-level=9 \
+            "./build/$DMG_NAME"
+
+          rm -rf "$STAGING"
+
+      - name: Create ZIP
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP_NAME="MiaoYan_V${VERSION}.zip"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent ./build/Release/MiaoYan.app "./build/$ZIP_NAME"
+
+      - name: Render release notes
+        id: notes
+        run: |
+          if [ -f scripts/release-ci/render_release_body.sh ]; then
+            bash scripts/release-ci/render_release_body.sh .github/RELEASE_NOTES.md > ./build/release-body.md
+            echo "has_notes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_notes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: MiaoYan V${{ steps.version.outputs.version }}
+          body_path: ${{ steps.notes.outputs.has_notes == 'true' && './build/release-body.md' || '' }}
+          draft: false
+          prerelease: false
+          files: |
+            ./build/MiaoYan.dmg
+            ./build/MiaoYan_V${{ steps.version.outputs.version }}.zip
