@@ -14,6 +14,11 @@
 
 <img src="https://miaoyan.app/assets/shots/readme-en.webp?v=20261106" width="900" alt="MiaoYan on Mac, iPad and iPhone" />
 
+> **Fork notice** — This repository is a fork of [tw93/MiaoYan](https://github.com/tw93/MiaoYan) with the following additions:
+>
+> 1. **S3 Sync & Conflict Protection** — Two-way sync between your note library and any S3-compatible storage bucket. Conflicting edits preserve both versions; deletions propagate via markers while keeping remote files recoverable. Configure the S3 endpoint, trigger a sync, and check status right from General Preferences.
+> 2. **Automated Release Pipeline** — A GitHub Actions workflow (`.github/workflows/release.yml`) that builds a DMG and ZIP on every version tag push (`V*`), verifies version consistency, and publishes them to GitHub Releases automatically.
+
 ## Features
 
 - **Local-first**: Notes are Markdown files in a folder you choose, with no data collection, and iCloud Drive or Nutstore can sync them across devices

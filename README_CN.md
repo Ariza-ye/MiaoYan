@@ -13,6 +13,11 @@
 
 <img src="https://miaoyan.app/assets/shots/readme-zh.webp?v=20261106" width="900" alt="妙言在 Mac、iPad 和 iPhone 上" />
 
+> **Fork 说明** — 本仓库 fork 自 [tw93/MiaoYan](https://github.com/tw93/MiaoYan)，在上游基础上新增了以下功能：
+>
+> 1. **S3 同步与冲突保护** — 支持将笔记库与任何 S3 兼容存储桶双向同步。冲突编辑会保留双方版本，删除通过标记传播并保留远端文件以便恢复。可在通用设置中配置 S3 端点、立即同步并查看状态与详情。
+> 2. **自动化 Release 流水线** — 新增 GitHub Actions 工作流 (`.github/workflows/release.yml`)，推送版本 tag (`V*`) 后自动构建 DMG 和 ZIP，校验版本一致性，并发布到 GitHub Releases。
+
 ## 特点
 
 - **纯本地**：笔记就是你选定文件夹里的 Markdown 文件，不收集数据，要跨设备就交给 iCloud 云盘或坚果云同步
