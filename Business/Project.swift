@@ -20,6 +20,7 @@ public class Project: Equatable {
     public var showInCommon: Bool
     public var showInSidebar: Bool = true
 
+    // swiftlint:disable:next function_parameter_count
     init(
         url: URL,
         label: String? = nil,

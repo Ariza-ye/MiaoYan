@@ -32,7 +32,7 @@ note which rows it finds. `Introduced` is kept when known, for the time a defect
 
 | ID | Reported | Symptom | Introduced | Fixed | Layer | Caught by |
 |---|---|---|---|---|---|---|
-| I-01 | 2026-05-06 | V3.5.1 shipped with CURRENT_PROJECT_VERSION still 3.5.0, so Sparkle offered the same update forever (#524) | dd137718 | 5a65863f | release-check | `version-consistency` |
+| I-01 | 2026-05-06 | V3.5.1 shipped with CURRENT_PROJECT_VERSION still 3.5.0, so Sparkle offered the same update forever (#524) | dd137718 | cb54c547 | release-check | `version-consistency` |
 | I-02 | 2026-07-17 | A note opened with another note's text after a save from preview mode, and the original text was lost (#543) | unknown | 205dde53 | review | `testRefusesCrossNoteWholeBufferSave`, `testRefusesSaveFromClearedBuffer` |
 | I-03 | 2026-07-27 | PDF export appended a Mermaid syntax error diagram after a diagram that rendered correctly (#548) | unknown | 0f7a346b | unit | `testRenderedMermaidSurvivesExportReloadWithoutOrphanError`, `testInvalidMermaidFallsBackWithoutOrphanError` |
 | I-04 | 2026-08-03 | A note deleted from the Trash folder came back as a new file (#549) | unknown | 3b4efb04 | unit | `testRemovedTrashMarkerIsHiddenOnlyWhileInsideTrash`, `testMissingLoadedNoteCannotBeRecreatedBeforeWatcherRetiresIt` |
